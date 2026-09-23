@@ -9,12 +9,6 @@ import { env } from './config/env.js';
 import { logger } from './lib/logger.js';
 import { apiNotFound, errorHandler } from './middleware/errorHandler.js';
 import { healthRouter } from './routes/health.routes.js';
-import { authRouter } from './routes/auth.routes.js';
-import { zonesRouter } from './routes/zones.routes.js';
-import { faresRouter } from './routes/fares.routes.js';
-import { ridesRouter } from './routes/rides.routes.js';
-import { driverRouter, poolsRouter } from './routes/driver.routes.js';
-import { walletRouter } from './routes/wallet.routes.js';
 
 /**
  * Build the Express app without starting a server, so tests can drive it with supertest.
@@ -41,13 +35,6 @@ export function createApp() {
   app.use(cookieParser());
 
   app.use('/api/health', healthRouter);
-  app.use('/api/auth', authRouter);
-  app.use('/api/zones', zonesRouter);
-  app.use('/api/fares', faresRouter);
-  app.use('/api/rides', ridesRouter);
-  app.use('/api/driver', driverRouter);
-  app.use('/api/pools', poolsRouter);
-  app.use('/api/wallet', walletRouter);
   app.use('/api', apiNotFound);
 
   // In production the same container serves the built React app (same origin => simple cookies).
