@@ -9,14 +9,13 @@ import { env } from './config/env.js';
 import { logger } from './lib/logger.js';
 import { apiNotFound, errorHandler } from './middleware/errorHandler.js';
 import { healthRouter } from './routes/health.routes.js';
+import { authRouter } from './routes/auth.routes.js';
+import { zonesRouter } from './routes/zones.routes.js';
 
-/**
- * Build the Express app without starting a server, so tests can drive it with supertest.
- */
 export function createApp() {
   const app = express();
   app.disable('x-powered-by');
-  app.set('trust proxy', 1); // behind Render / Docker proxies: needed for secure cookies + rate limiting
+  app.set('trust proxy', 1);
 
   app.use(helmet());
   app.use(
@@ -35,9 +34,10 @@ export function createApp() {
   app.use(cookieParser());
 
   app.use('/api/health', healthRouter);
+  app.use('/api/auth', authRouter);
+  app.use('/api/zones', zonesRouter);
   app.use('/api', apiNotFound);
 
-  // In production the same container serves the built React app (same origin => simple cookies).
   if (env.CLIENT_DIST_DIR && fs.existsSync(env.CLIENT_DIST_DIR)) {
     const dist = path.resolve(env.CLIENT_DIST_DIR);
     app.use(express.static(dist, { index: false, maxAge: '1h' }));
