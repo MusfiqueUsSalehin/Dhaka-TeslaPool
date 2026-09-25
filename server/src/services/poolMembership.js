@@ -1,4 +1,6 @@
 import { assertPoolTransition, SEATED_RIDE_STATUSES } from '../domain/stateMachine.js';
+import { checkCompatibility } from '../domain/matching.js';
+import { conflict } from '../lib/errors.js';
 import { logger } from '../lib/logger.js';
 import { recordEvent } from './rideEvents.js';
 
@@ -10,6 +12,36 @@ export const lockRide = (trx, where) => trx('rides').where(where).forUpdate().fi
 /** Rides currently holding seats in the pool (the pool's members). */
 export function seatedMembers(trx, poolId) {
   return trx('rides').where({ pool_id: poolId }).whereIn('status', SEATED_RIDE_STATUSES).orderBy('matched_at');
+}
+
+/**
+ * Decide whether `candidate` may join `pool` right now. Caller must hold the pool lock,
+ * so `pool` and the members read here are current, not a stale snapshot.
+ */
+export async function evaluateJoin(trx, pool, candidate) {
+  if (pool.status !== 'OPEN') return { ok: false, reason: 'POOL_NOT_OPEN' };
+  const members = await trx('rides').where({ pool_id: pool.id, status: 'MATCHED' }).select('id', 'dropoff_zone');
+  return checkCompatibility({
+    pool: { pickupZone: pool.pickup_zone, capacity: pool.capacity, seatsTaken: pool.seats_taken },
+    members: members.map((m) => ({ id: m.id, dropoff: m.dropoff_zone })),
+    candidate,
+  });
+}
+
+/**
+ * Take `seats` in the pool. The WHERE clause repeats the capacity check so that even
+ * without the row lock this statement could never overbook; the CHECK constraint on
+ * the table is the final safety net.
+ */
+export async function claimSeats(trx, poolId, seats) {
+  const [updated] = await trx('pools')
+    .where({ id: poolId, status: 'OPEN' })
+    .andWhereRaw('seats_taken + ? <= capacity', [seats])
+    .update({ seats_taken: trx.raw('seats_taken + ?', [seats]), updated_at: trx.fn.now() })
+    .returning('*');
+  if (!updated) throw conflict('NOT_ENOUGH_SEATS', 'That Tesla just filled up');
+  logger.debug({ poolId, claimed: seats, seatsTaken: updated.seats_taken, capacity: updated.capacity }, 'seats claimed');
+  return updated;
 }
 
 /**

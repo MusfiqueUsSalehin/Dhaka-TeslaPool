@@ -7,23 +7,48 @@ import { formatTaka } from '../lib/money.js';
 import { logger } from '../lib/logger.js';
 import { recordEvent, presentEvent } from './rideEvents.js';
 import { presentRideForPassenger, rideWithPoolQuery } from './presenters.js';
-import { lockPool, lockRide, releaseSeats } from './poolMembership.js';
+import { claimSeats, evaluateJoin, lockPool, lockRide, releaseSeats } from './poolMembership.js';
 
 async function loadPassengerRide(q, passengerId, rideId) {
   const row = await rideWithPoolQuery(q).where('r.id', rideId).andWhere('r.passenger_id', passengerId).first();
-  // 404 (not 403) for other people's rides: do not confirm that the ID exists.
   if (!row) throw notFound('Ride');
   return row;
 }
 
 /**
- * Nusrat requests a ride. Creates the ride as REQUESTED (waiting for a Tesla).
+ * Look for an OPEN pool the new request can share. Each candidate is locked
+ * (SELECT … FOR UPDATE) and re-evaluated before seats are claimed, so two passengers
+ * racing for Bullet's last seat are serialised: the second one sees the pool full.
+ * Returns the updated pool, or null if nothing fits.
+ */
+async function findPoolToJoin(trx, { pickup, dropoff, seats }) {
+  const candidates = await trx('pools as p')
+    .join('vehicles as v', 'v.id', 'p.vehicle_id')
+    .where({ 'p.status': 'OPEN', 'p.pickup_zone': pickup, 'v.is_online': true })
+    .andWhereRaw('p.capacity - p.seats_taken >= ?', [seats])
+    .orderBy('p.created_at')
+    .select('p.id');
+
+  for (const { id } of candidates) {
+    const pool = await lockPool(trx, id);
+    const verdict = await evaluateJoin(trx, pool, { id: 'new-request', pickup, dropoff, seats });
+    if (!verdict.ok) {
+      logger.debug({ poolId: id, reason: verdict.reason, seatsTaken: pool.seats_taken }, 'pool not joinable');
+      continue;
+    }
+    return claimSeats(trx, pool.id, seats);
+  }
+  return null;
+}
+
+/**
+ * Nusrat requests a ride. If a compatible Tesla is already collecting passengers at her
+ * pickup zone she joins it immediately (MATCHED); otherwise she waits (REQUESTED).
  */
 export async function requestRide(passenger, { pickup, dropoff, seats, paymentMethod }) {
   const meters = distanceM(pickup, dropoff);
   const estimate = estimateFare({ pickup, dropoff, seats });
 
-  // TeslaPay must be able to cover the worst case (solo fare) before we book.
   if (paymentMethod === 'TESLAPAY' && passenger.wallet_balance_paisa < estimate.solo.totalPaisa) {
     throw conflict('INSUFFICIENT_BALANCE', `TeslaPay balance ${formatTaka(passenger.wallet_balance_paisa)} is below the fare ${formatTaka(estimate.solo.totalPaisa)}. Top up or pay cash.`);
   }
@@ -33,6 +58,9 @@ export async function requestRide(passenger, { pickup, dropoff, seats, paymentMe
       const active = await trx('rides').where({ passenger_id: passenger.id }).whereIn('status', ACTIVE_RIDE_STATUSES).first('id');
       if (active) throw conflict('ACTIVE_RIDE_EXISTS', 'You already have a ride in progress', { rideId: active.id });
 
+      // 1) Try to share: the oldest compatible OPEN pool in the same pickup zone wins.
+      const joined = await findPoolToJoin(trx, { pickup, dropoff, seats });
+
       const [ride] = await trx('rides')
         .insert({
           passenger_id: passenger.id,
@@ -41,7 +69,9 @@ export async function requestRide(passenger, { pickup, dropoff, seats, paymentMe
           seats,
           payment_method: paymentMethod,
           distance_m: meters,
-          status: 'REQUESTED',
+          status: joined ? 'MATCHED' : 'REQUESTED',
+          pool_id: joined?.id ?? null,
+          matched_at: joined ? trx.fn.now() : null,
         })
         .returning('*');
       await recordEvent(trx, {
@@ -51,7 +81,18 @@ export async function requestRide(passenger, { pickup, dropoff, seats, paymentMe
         to: 'REQUESTED',
         details: { pickup, dropoff, seats, paymentMethod, distanceM: meters },
       });
-      logger.info({ rideId: ride.id, passengerId: passenger.id, pickup, dropoff, seats }, 'ride requested');
+      if (joined) {
+        await recordEvent(trx, {
+          rideId: ride.id,
+          poolId: joined.id,
+          type: 'RIDE_MATCHED',
+          from: 'REQUESTED',
+          to: 'MATCHED',
+          details: { via: 'AUTO_JOIN', seatsTaken: joined.seats_taken, capacity: joined.capacity },
+        });
+      }
+      // 2) Otherwise the ride waits as REQUESTED and shows up in nearby drivers' feeds.
+      logger.info({ rideId: ride.id, passengerId: passenger.id, pickup, dropoff, seats, poolId: joined?.id ?? null }, joined ? 'ride requested and joined a pool' : 'ride requested, waiting for a driver');
       return ride.id;
     },
     { label: 'requestRide' },
@@ -60,10 +101,6 @@ export async function requestRide(passenger, { pickup, dropoff, seats, paymentMe
   return presentRideForPassenger(await loadPassengerRide(db, passenger.id, rideId));
 }
 
-/**
- * Passenger cancels. Allowed while REQUESTED or MATCHED; seats go back to the pool.
- * Lock order: pool (if any) then ride, re-checking status after the locks.
- */
 export async function cancelRide(passenger, rideId, reason = 'Cancelled by passenger') {
   await withTransaction(
     async (trx) => {
@@ -72,7 +109,6 @@ export async function cancelRide(passenger, rideId, reason = 'Cancelled by passe
 
       const pool = snapshot.pool_id ? await lockPool(trx, snapshot.pool_id) : null;
       const ride = await lockRide(trx, { id: rideId });
-      // The ride may have been matched to a pool between our read and the lock.
       if (ride.pool_id !== snapshot.pool_id) throw conflict('RIDE_CHANGED', 'Your ride was just updated, please try again');
 
       assertPassengerCanCancel(ride.status);
@@ -116,7 +152,6 @@ export async function listRides(passenger, { limit = 20, before } = {}) {
   return rows.map(presentRideForPassenger);
 }
 
-/** One ride with its full timeline — "explain exactly what happened". */
 export async function getRide(passenger, rideId) {
   const row = await loadPassengerRide(db, passenger.id, rideId);
   const events = await db('ride_events as e')
