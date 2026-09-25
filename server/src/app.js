@@ -11,6 +11,8 @@ import { apiNotFound, errorHandler } from './middleware/errorHandler.js';
 import { healthRouter } from './routes/health.routes.js';
 import { authRouter } from './routes/auth.routes.js';
 import { zonesRouter } from './routes/zones.routes.js';
+import { faresRouter } from './routes/fares.routes.js';
+import { ridesRouter } from './routes/rides.routes.js';
 
 export function createApp() {
   const app = express();
@@ -36,6 +38,8 @@ export function createApp() {
   app.use('/api/health', healthRouter);
   app.use('/api/auth', authRouter);
   app.use('/api/zones', zonesRouter);
+  app.use('/api/fares', faresRouter);
+  app.use('/api/rides', ridesRouter);
   app.use('/api', apiNotFound);
 
   if (env.CLIENT_DIST_DIR && fs.existsSync(env.CLIENT_DIST_DIR)) {
