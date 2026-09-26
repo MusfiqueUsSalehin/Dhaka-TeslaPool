@@ -1,14 +1,10 @@
 import { db, withTransaction } from '../db/knex.js';
 import { formatTaka } from '../lib/money.js';
 import { logger } from '../lib/logger.js';
+import { zoneRef } from './presenters.js';
 
 export const TOPUP_LIMITS = Object.freeze({ MIN_PAISA: 1000, MAX_PAISA: 500000 }); // ৳10 .. ৳5,000
 
-/**
- * Move money in or out of one user's wallet and write the ledger row, in the caller's
- * transaction. Debits are conditional (balance >= amount) so a wallet can never go
- * negative; returns null if the debit was refused.
- */
 export async function applyWalletChange(trx, { userId, amountPaisa, type, rideId = null }) {
   const q = trx('users').where({ id: userId });
   if (amountPaisa < 0) q.andWhere('wallet_balance_paisa', '>=', -amountPaisa);
@@ -52,7 +48,7 @@ export async function getWallet(user, { limit = 30 } = {}) {
       amount: formatTaka(t.amount_paisa),
       balanceAfter: formatTaka(t.balance_after_paisa),
       rideId: t.ride_id,
-      trip: t.ride_id ? { pickup: t.pickup_zone, dropoff: t.dropoff_zone } : null,
+      trip: t.ride_id ? { pickup: zoneRef(t.pickup_zone), dropoff: zoneRef(t.dropoff_zone) } : null,
       at: t.created_at,
     })),
   };
