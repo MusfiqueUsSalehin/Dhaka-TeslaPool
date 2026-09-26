@@ -13,14 +13,6 @@ const LABEL = {
 };
 const DEFAULT_LABEL = [330, 130, 'start'];
 
-/**
- * A schematic Dhaka map drawn from the same 500 m grid the fare and matching rules use
- * (no map API). Routes are drawn as L-shaped Manhattan paths, which is exactly how
- * distance is measured.
- *
- * @param {string}   pickup   zone code
- * @param {string[]} stops    drop-off zone codes in route order
- */
 export function ZoneMap({ pickup, stops = [], className = '' }) {
   const { data: zones } = useQuery({ queryKey: ['zones'], queryFn: metaApi.zones, staleTime: Infinity });
   if (!zones) return <div className={`rounded-xl bg-stone-50 ${className}`} />;
@@ -60,7 +52,7 @@ export function ZoneMap({ pickup, stops = [], className = '' }) {
           <g key={z.code}>
             <circle cx={p.x} cy={p.y} r={active ? 260 : 150} fill={isPickup ? '#059669' : isDrop ? '#c8102e' : '#a8a29e'} stroke="white" strokeWidth={60} />
             <text
-              x={p.x + dx}
+              x={p.x + dx + (active ? Math.sign(dx) * 80 : 0)}
               y={p.y + dy}
               textAnchor={anchor}
               paintOrder="stroke"
