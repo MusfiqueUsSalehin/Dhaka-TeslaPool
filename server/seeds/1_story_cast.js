@@ -15,7 +15,10 @@ export const CAST = {
   shirin: { name: 'Shirin', phone: '01711000004', role: 'PASSENGER' },
 };
 
-export const BULLET = { name: 'Bullet', plate: 'DHAKA-TESLA-11', capacity: 3, current_zone: 'BANANI' };
+// ৳500 / ৳300 / ৳150 in TeslaPay; Jashim starts at ৳0 and earns.
+export const OPENING_BALANCES = { nusrat: 50000, rafiq: 30000, shirin: 15000 };
+
+export const BULLET ={ name: 'Bullet', plate: 'DHAKA-TESLA-11', capacity: 3, current_zone: 'BANANI' };
 
 export async function seed(knex) {
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
@@ -25,6 +28,19 @@ export async function seed(knex) {
       .insert({ ...person, password_hash: passwordHash })
       .onConflict('phone')
       .ignore();
+  }
+
+  // Opening TeslaPay balances, written through the ledger so balance == sum(ledger).
+  // Only for users with no ledger history yet (keeps the seed idempotent).
+  for (const [key, paisa] of Object.entries(OPENING_BALANCES)) {
+    const user = await knex('users').where({ phone: CAST[key].phone }).first('id');
+    const hasHistory = await knex('wallet_transactions').where({ user_id: user.id }).first('id');
+    if (hasHistory) continue;
+    const [{ wallet_balance_paisa: balance }] = await knex('users')
+      .where({ id: user.id })
+      .update({ wallet_balance_paisa: knex.raw('wallet_balance_paisa + ?', [paisa]) })
+      .returning('wallet_balance_paisa');
+    await knex('wallet_transactions').insert({ user_id: user.id, type: 'TOPUP', amount_paisa: paisa, balance_after_paisa: balance });
   }
 
   const jashim = await knex('users').where({ phone: CAST.jashim.phone }).first('id');

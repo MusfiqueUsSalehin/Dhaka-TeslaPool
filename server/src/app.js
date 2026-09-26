@@ -14,6 +14,7 @@ import { zonesRouter } from './routes/zones.routes.js';
 import { faresRouter } from './routes/fares.routes.js';
 import { ridesRouter } from './routes/rides.routes.js';
 import { driverRouter, poolsRouter } from './routes/driver.routes.js';
+import { walletRouter } from './routes/wallet.routes.js';
 
 export function createApp() {
   const app = express();
@@ -43,6 +44,7 @@ export function createApp() {
   app.use('/api/rides', ridesRouter);
   app.use('/api/driver', driverRouter);
   app.use('/api/pools', poolsRouter);
+  app.use('/api/wallet', walletRouter);
   app.use('/api', apiNotFound);
 
   if (env.CLIENT_DIST_DIR && fs.existsSync(env.CLIENT_DIST_DIR)) {
