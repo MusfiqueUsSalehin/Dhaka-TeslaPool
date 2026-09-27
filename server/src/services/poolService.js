@@ -7,7 +7,7 @@ import { formatTaka } from '../lib/money.js';
 import { logger } from '../lib/logger.js';
 import { recordEvent, presentEvent } from './rideEvents.js';
 import { presentRideForDriver, zoneRef } from './presenters.js';
-import { lockPool, lockRide, releaseSeats } from './poolMembership.js';
+import { lockPool, lockRide, lockVehicle, releaseSeats } from './poolMembership.js';
 import { settlePayment } from './paymentService.js';
 
 function poolMembersQuery(q, poolId) {
@@ -74,6 +74,9 @@ export async function getPool(driver, poolId) {
 }
 
 async function lockDriverPool(trx, driver, poolId) {
+  // Lock the driver's vehicle first, like acceptRequest does. Without this, "Add Rafiq"
+  // (vehicle -> pool) racing "I've arrived" (pool -> vehicle update) deadlocked.
+  await lockVehicle(trx, { driver_id: driver.id });
   const pool = await lockPool(trx, poolId);
   if (!pool || pool.driver_id !== driver.id) throw notFound('Pool');
   return pool;
