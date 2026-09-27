@@ -10,10 +10,6 @@ import { presentRideForDriver, zoneRef } from './presenters.js';
 import { lockPool, lockRide, releaseSeats } from './poolMembership.js';
 import { settlePayment } from './paymentService.js';
 
-// ---------------------------------------------------------------------------
-// Reading
-// ---------------------------------------------------------------------------
-
 function poolMembersQuery(q, poolId) {
   return q('rides as r')
     .join('users as u', 'u.id', 'r.passenger_id')
@@ -69,15 +65,13 @@ export async function getPool(driver, poolId) {
   if (!pool) throw notFound('Pool');
   const events = await db('ride_events as e')
     .leftJoin('users as u', 'u.id', 'e.actor_id')
+    .leftJoin('rides as r', 'r.id', 'e.ride_id')
+    .leftJoin('users as pax', 'pax.id', 'r.passenger_id')
     .where('e.pool_id', poolId)
     .orderBy('e.id')
-    .select('e.*', 'u.name as actor_name', 'u.role as actor_role');
+    .select('e.*', 'u.name as actor_name', 'u.role as actor_role', 'pax.name as subject_name');
   return { ...(await presentPool(db, pool)), timeline: events.map(presentEvent) };
 }
-
-// ---------------------------------------------------------------------------
-// Commands (driver actions). Each: one transaction, pool row locked first.
-// ---------------------------------------------------------------------------
 
 async function lockDriverPool(trx, driver, poolId) {
   const pool = await lockPool(trx, poolId);
@@ -91,7 +85,6 @@ async function lockPoolRide(trx, pool, rideId) {
   return ride;
 }
 
-/** Jashim reached the pickup zone. Pool-wide: every waiting member becomes DRIVER_ARRIVED; no more joins. */
 export async function markArrived(driver, poolId) {
   await withTransaction(
     async (trx) => {
@@ -114,10 +107,6 @@ export async function markArrived(driver, poolId) {
   return getPool(driver, poolId);
 }
 
-/**
- * Trip starts. This is where each passenger's fare is LOCKED: pooled if two or more
- * bookings are on board right now.
- */
 export async function startTrip(driver, poolId) {
   await withTransaction(
     async (trx) => {
@@ -161,7 +150,6 @@ export async function startTrip(driver, poolId) {
   return getPool(driver, poolId);
 }
 
-/** Drop one passenger off. Their ride completes and is paid; the pool completes with the last one. */
 export async function dropOff(driver, poolId, rideId) {
   await withTransaction(
     async (trx) => {
@@ -190,7 +178,6 @@ export async function dropOff(driver, poolId, rideId) {
         await recordEvent(trx, { poolId: pool.id, actorId: driver.id, type: 'POOL_COMPLETED', from: pool.status, to: 'COMPLETED' });
         logger.info({ poolId }, 'pool completed: last passenger dropped off');
       } else {
-        // The seat is physically free again, but the pool is closed to new joins after arrival.
         await trx('pools').where({ id: pool.id }).update({ seats_taken: trx.raw('seats_taken - ?', [ride.seats]), updated_at: trx.fn.now() });
       }
     },
@@ -199,7 +186,6 @@ export async function dropOff(driver, poolId, rideId) {
   return getPool(driver, poolId);
 }
 
-/** Passenger never showed up at the pickup. Only possible while the driver is waiting. */
 export async function markNoShow(driver, poolId, rideId) {
   await withTransaction(
     async (trx) => {

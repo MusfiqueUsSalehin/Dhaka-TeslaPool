@@ -1,15 +1,9 @@
 import { taka } from '../lib/format.js';
 
-/**
- * Renders the fare object from the API:
- *  ESTIMATE    live price (changes as people join/leave the pool until the trip starts)
- *  FINAL       locked at trip start, with the full breakdown
- *  NOT_CHARGED cancelled before starting
- */
 export function FareBreakdown({ fare, compact = false }) {
   if (!fare) return null;
   if (fare.status === 'NOT_CHARGED') {
-    return <p className="text-sm font-medium text-stone-500">Not charged</p>;
+    return <span className="text-sm font-medium text-stone-500">Not charged</span>;
   }
 
   const f = fare.current;

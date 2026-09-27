@@ -8,10 +8,11 @@ import { WalletPage } from './pages/WalletPage.jsx';
 import { RidePage } from './pages/passenger/RidePage.jsx';
 import { HistoryPage } from './pages/passenger/HistoryPage.jsx';
 import { RideDetailPage } from './pages/passenger/RideDetailPage.jsx';
+import { DriverDashboard } from './pages/driver/DriverDashboard.jsx';
+import { DriverHistory, DriverPoolDetail } from './pages/driver/DriverHistory.jsx';
 
 const HOME = { PASSENGER: '/ride', DRIVER: '/driver' };
 
-/** Only render children for the given role; send everyone else to their own home. */
 function RequireRole({ role, children }) {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
@@ -46,6 +47,10 @@ export default function App() {
         <Route path="/history" element={<RequireRole role="PASSENGER"><HistoryPage /></RequireRole>} />
         <Route path="/rides/:rideId" element={<RequireRole role="PASSENGER"><RideDetailPage /></RequireRole>} />
         <Route path="/wallet" element={<RequireRole role="PASSENGER"><WalletPage /></RequireRole>} />
+        <Route path="/driver" element={<RequireRole role="DRIVER"><DriverDashboard /></RequireRole>} />
+        <Route path="/driver/history" element={<RequireRole role="DRIVER"><DriverHistory /></RequireRole>} />
+        <Route path="/driver/pools/:poolId" element={<RequireRole role="DRIVER"><DriverPoolDetail /></RequireRole>} />
+        <Route path="/driver/wallet" element={<RequireRole role="DRIVER"><WalletPage /></RequireRole>} />
       </Route>
       <Route path="*" element={<Navigate to={HOME[user.role] ?? '/login'} replace />} />
     </Routes>
