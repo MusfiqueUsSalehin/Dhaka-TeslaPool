@@ -146,7 +146,7 @@ function ZoneSelect({ id, label, value, onChange, zones, exclude, placeholder })
 
 function PayOption({ checked, onChange, title, hint }) {
   return (
-    <label className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 ${checked ? 'border-brand-600 bg-brand-50' : 'border-stone-300 bg-white'}`}>
+    <label className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 ${checked ? 'border-brand-600 bg-brand-50' : 'border-stone-300 bg-stone-50'}`}>
       <input type="radio" name="payment" className="accent-brand-600" checked={checked} onChange={onChange} />
       <span>
         <span className="block text-sm font-semibold">{title}</span>
