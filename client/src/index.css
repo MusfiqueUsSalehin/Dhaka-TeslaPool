@@ -1,12 +1,42 @@
 @import 'tailwindcss';
 
 @theme {
-  --color-brand-50: #fdf2f3;
-  --color-brand-100: #fbe3e6;
+  --color-brand-50: #3a1620;
+  --color-brand-100: #4a1c28;
   --color-brand-500: #e0243f;
   --color-brand-600: #c8102e;
   --color-brand-700: #a30c25;
-  --color-ink: #1c1917;
+
+  --color-stone-50: #181c24;
+  --color-stone-100: #0b0d12;
+  --color-stone-200: #242a34;
+  --color-stone-300: #323a47;
+  --color-stone-400: #4b5563;
+  --color-stone-500: #8790a0;
+  --color-stone-600: #a3aebd;
+  --color-stone-700: #c1cad6;
+  --color-stone-800: #dde3ea;
+  --color-stone-900: #f3f5f8;
+
+  --color-red-50: #2a1215;
+  --color-red-100: #3a1a1e;
+  --color-red-200: #5c2328;
+  --color-red-700: #f87171;
+  --color-red-800: #fca5a5;
+
+  --color-amber-50: #2b2108;
+  --color-amber-100: #3d2f0d;
+  --color-amber-200: #6b5518;
+  --color-amber-500: #f2b705;
+  --color-amber-800: #fbbf24;
+
+  --color-emerald-100: #0d2818;
+  --color-emerald-200: #1a4530;
+  --color-emerald-500: #10b981;
+  --color-emerald-700: #34d399;
+  --color-emerald-800: #6ee7b7;
+
+  --color-ink: #eef1f5;
   --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
@@ -15,36 +45,47 @@
     -webkit-text-size-adjust: 100%;
   }
   body {
-    @apply bg-stone-100 text-ink antialiased;
+    @apply text-ink antialiased;
+    background: radial-gradient(140% 100% at 15% -10%, #10131a 0%, #0b0d12 55%);
+    background-attachment: fixed;
   }
   :focus-visible {
-    @apply outline-2 outline-offset-2 outline-brand-600;
+    @apply outline-2 outline-offset-2 outline-brand-500;
   }
 }
 
-/* Declared as a utility so the button variants below can @apply it (Tailwind v4). */
 @utility btn {
   @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50;
 }
 
 @layer components {
   .card {
-    @apply rounded-2xl border border-stone-200 bg-white p-5 shadow-sm;
+    @apply rounded-2xl border border-stone-200 bg-stone-50 p-5 shadow-lg shadow-black/20;
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.05),
+      0 8px 24px -12px rgba(0, 0, 0, 0.5);
   }
   .btn-primary {
-    @apply btn bg-brand-600 text-white hover:bg-brand-700;
+    @apply btn text-white;
+    background: linear-gradient(180deg, #dc2c46 0%, #c8102e 60%, #a30c25 100%);
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.15),
+      0 4px 14px -4px rgba(200, 16, 46, 0.45);
+  }
+  .btn-primary:hover {
+    background: linear-gradient(180deg, #e63a54 0%, #d21634 60%, #a30c25 100%);
   }
   .btn-secondary {
-    @apply btn border border-stone-300 bg-white text-stone-800 hover:bg-stone-50;
+    @apply btn border border-stone-300 bg-stone-100 text-stone-800 hover:bg-stone-50;
   }
   .btn-danger {
-    @apply btn border border-red-200 bg-white text-red-700 hover:bg-red-50;
+    @apply btn border border-red-200 bg-stone-100 text-red-700 hover:bg-red-50;
   }
   .field-label {
     @apply mb-1.5 block text-sm font-medium text-stone-700;
   }
   .input {
-    @apply w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm shadow-xs focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-100;
+    @apply w-full rounded-xl border border-stone-300 bg-stone-50 px-3 py-2.5 text-sm shadow-xs focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-100;
   }
   .muted {
     @apply text-sm text-stone-500;

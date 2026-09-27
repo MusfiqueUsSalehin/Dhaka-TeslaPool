@@ -7,7 +7,7 @@ export function Timeline({ events }) {
     <ol className="relative space-y-4 border-l border-stone-200 pl-5">
       {events.map((e) => (
         <li key={e.id} className="relative">
-          <span className="absolute top-1.5 -left-[25px] h-2.5 w-2.5 rounded-full bg-brand-600 ring-4 ring-white" />
+          <span className="absolute top-1.5 -left-[25px] h-2.5 w-2.5 rounded-full bg-brand-600 ring-4 ring-stone-50" />
           <p className="text-sm font-medium text-stone-800">
             {e.subject && <span className="text-brand-700">{e.subject}: </span>}
             {EVENT_LABEL[e.type] ?? e.type}

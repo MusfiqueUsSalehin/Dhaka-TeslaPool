@@ -36,10 +36,10 @@ export function ZoneMap({ pickup, stops = [], className = '' }) {
       aria-label={pickup ? `Map from ${byCode[pickup]?.name} to ${stops.map((s) => byCode[s]?.name).join(', ')}` : 'Map of Dhaka zones'}
     >
       {Array.from({ length: 12 }, (_, i) => -5000 + i * 1000).map((x) => (
-        <line key={`v${x}`} x1={x} x2={x} y1={-10000} y2={7500} stroke="#e7e5e4" strokeWidth={30} />
+        <line key={`v${x}`} x1={x} x2={x} y1={-10000} y2={7500} stroke="#2a2f37" strokeWidth={30} />
       ))}
       {Array.from({ length: 18 }, (_, i) => -10000 + i * 1000).map((y) => (
-        <line key={`h${y}`} y1={y} y2={y} x1={-5200} x2={5600} stroke="#e7e5e4" strokeWidth={30} />
+        <line key={`h${y}`} y1={y} y2={y} x1={-5200} x2={5600} stroke="#2a2f37" strokeWidth={30} />
       ))}
       {path && <path d={path} fill="none" stroke="#c8102e" strokeWidth={140} strokeLinejoin="round" strokeLinecap="round" opacity={0.85} />}
       {zones.map((z) => {
@@ -50,17 +50,17 @@ export function ZoneMap({ pickup, stops = [], className = '' }) {
         const [dx, dy, anchor] = LABEL[z.code] ?? DEFAULT_LABEL;
         return (
           <g key={z.code}>
-            <circle cx={p.x} cy={p.y} r={active ? 260 : 150} fill={isPickup ? '#059669' : isDrop ? '#c8102e' : '#a8a29e'} stroke="white" strokeWidth={60} />
+            <circle cx={p.x} cy={p.y} r={active ? 260 : 150} fill={isPickup ? '#059669' : isDrop ? '#c8102e' : '#5b6472'} stroke="white" strokeWidth={60} />
             <text
               x={p.x + dx + (active ? Math.sign(dx) * 80 : 0)}
               y={p.y + dy}
               textAnchor={anchor}
               paintOrder="stroke"
-              stroke="#fafaf9"
+              stroke="#1a1e24"
               strokeWidth={90}
               fontSize={active ? 440 : 360}
               fontWeight={active ? 700 : 500}
-              fill={active ? '#1c1917' : '#78716c'}
+              fill={active ? '#eef1f4' : '#8b93a0'}
             >
               {z.name}
             </text>
