@@ -1,0 +1,43 @@
+# docker compose up --build   ->   http://localhost:4000
+# Works without a .env file (dev defaults below); copy .env.example to .env to override.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-tesla}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tesla}
+      POSTGRES_DB: ${POSTGRES_DB:-tesla_pool}
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgres://${POSTGRES_USER:-tesla}:${POSTGRES_PASSWORD:-tesla}@db:5432/${POSTGRES_DB:-tesla_pool}
+      DATABASE_SSL: 'false'
+      # Local-only default so `docker compose up` works out of the box. Set a real one in .env.
+      JWT_SECRET: ${JWT_SECRET:-local-docker-only-secret-change-me}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      SEED_ON_START: ${SEED_ON_START:-true}
+    ports:
+      - '4000:4000'
+
+volumes:
+  pgdata:

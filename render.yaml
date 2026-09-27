@@ -1,0 +1,24 @@
+# Render Blueprint (free plan). The database is Neon's free Postgres, because Render's
+# free Postgres is deleted after 30 days. See docs/deployment.md.
+services:
+  - type: web
+    name: dhaka-tesla-pool
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false # paste the Neon connection string in the Render dashboard
+      - key: DATABASE_SSL
+        value: 'true'
+      - key: JWT_SECRET
+        generateValue: true
+      - key: COOKIE_SECURE
+        value: 'true'
+      - key: SEED_ON_START
+        value: 'true'
+      - key: LOG_LEVEL
+        value: info
