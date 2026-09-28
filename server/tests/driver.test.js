@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
-import { db, resetDb, loginAs } from './helpers.js';
+import bcrypt from 'bcryptjs';
+import request from 'supertest';
+import { app, db, resetDb, loginAs, DEMO_PASSWORD } from './helpers.js';
 
 beforeEach(resetDb);
 afterAll(() => db.destroy());
@@ -44,6 +46,26 @@ describe('driver availability and request feed', () => {
   it('only drivers can use driver endpoints', async () => {
     const rafiq = await loginAs('rafiq');
     expect((await rafiq.get('/api/driver/me')).status).toBe(403);
+  });
+
+  it("another driver cannot see or move Jashim's pool", async () => {
+    // A second driver, Babul with his Tesla "Thunder", exists only in this test.
+    const [babul] = await db('users')
+      .insert({ name: 'Babul', phone: '01711000009', role: 'DRIVER', password_hash: await bcrypt.hash(DEMO_PASSWORD, 4) })
+      .returning('*');
+    await db('vehicles').insert({ driver_id: babul.id, name: 'Thunder', plate: 'DHAKA-TESLA-22', capacity: 3, current_zone: 'BANANI', is_online: true });
+
+    const nusrat = await loginAs('nusrat');
+    const ride = (await nusrat.post('/api/rides').send(nusratTrip)).body.data;
+    const jashim = await jashimOnline();
+    const pool = (await jashim.post(`/api/driver/requests/${ride.id}/accept`)).body.data;
+
+    const thunder = request.agent(app);
+    await thunder.post('/api/auth/login').send({ phone: '01711000009', password: DEMO_PASSWORD }).expect(200);
+    expect((await thunder.get(`/api/pools/${pool.id}`)).status).toBe(404);
+    expect((await thunder.post(`/api/pools/${pool.id}/arrive`)).status).toBe(404);
+    expect((await thunder.post(`/api/pools/${pool.id}/rides/${ride.id}/no-show`)).status).toBe(404);
+    expect((await db('pools').where({ id: pool.id }).first()).status).toBe('OPEN');
   });
 });
 

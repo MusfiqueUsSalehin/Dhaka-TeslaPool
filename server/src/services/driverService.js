@@ -138,8 +138,11 @@ export async function acceptRequest(driver, rideId) {
       if (!vehicle.is_online) throw conflict('DRIVER_OFFLINE', 'Go online before accepting rides');
 
       const active = await getActivePool(trx, vehicle.id);
-      if (active && active.status !== 'OPEN') throw conflict('POOL_BUSY', 'You already left the pickup point; finish this trip first');
-      const pool = active ? await lockPool(trx, active.id) : null;
+      // Re-read under the lock: the last passenger may have cancelled (and so cancelled the
+      // pool) between the read above and the lock. A cancelled pool means "no active pool".
+      let pool = active ? await lockPool(trx, active.id) : null;
+      if (pool?.status === 'CANCELLED') pool = null;
+      if (pool && pool.status !== 'OPEN') throw conflict('POOL_BUSY', '...');
 
       const ride = await lockRide(trx, { id: rideId });
       if (!ride) throw notFound('Ride request');

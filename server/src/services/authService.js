@@ -8,6 +8,7 @@ import { formatTaka } from '../lib/money.js';
 
 const BCRYPT_ROUNDS = 10;
 export const SESSION_COOKIE = 'tp_session';
+// Compared against when the phone is unknown, so both paths take the same time.
 const DUMMY_HASH = bcrypt.hashSync('not-a-real-password', BCRYPT_ROUNDS);
 
 export function toPublicUser(user) {
@@ -37,19 +38,29 @@ export function verifyToken(token) {
   }
 }
 
+/** Passengers sign themselves up. Drivers are onboarded by operations (seeded), not self-serve. */
 export async function signUpPassenger({ name, phone, password }) {
   const existing = await db('users').where({ phone }).first('id');
   if (existing) throw conflict('PHONE_TAKEN', 'An account with this phone number already exists');
 
-  const [user] = await db('users')
-    .insert({ name: name.trim(), phone, password_hash: await hashPassword(password), role: 'PASSENGER' })
-    .returning('*');
+  let user;
+  try {
+    [user] = await db('users')
+      .insert({ name: name.trim(), phone, password_hash: await hashPassword(password), role: 'PASSENGER' })
+      .returning('*');
+  } catch (err) {
+    // Two sign-ups with the same number at once: the unique index decides the winner.
+    if (err.code === '23505') throw conflict('PHONE_TAKEN', 'An account with this phone number already exists');
+    throw err;
+  }
   logger.info({ userId: user.id }, 'passenger signed up');
   return user;
 }
 
 export async function login({ phone, password }) {
   const user = await db('users').where({ phone }).first();
+  // Same error (and still a bcrypt compare) whether the phone exists or not,
+  // so the endpoint does not reveal which phone numbers have accounts.
   const ok = await bcrypt.compare(password, user?.password_hash ?? DUMMY_HASH);
   if (!user || !ok) throw unauthorized('Wrong phone number or password');
   logger.debug({ userId: user.id, role: user.role }, 'login ok');

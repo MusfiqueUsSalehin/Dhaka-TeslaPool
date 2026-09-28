@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
+import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { env } from '../config/env.js';
 import { asyncHandler } from '../lib/asyncHandler.js';
@@ -9,6 +10,7 @@ import { SESSION_COOKIE, login, signToken, signUpPassenger, toPublicUser } from 
 
 export const authRouter = Router();
 
+// Slow down password guessing. Disabled in tests so suites can log in freely.
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 30,
@@ -32,11 +34,13 @@ const signupSchema = z.object({
 const loginSchema = z.object({ phone, password: z.string().min(1, 'Password is required').max(72) });
 
 function setSessionCookie(res, user) {
-  res.cookie(SESSION_COOKIE, signToken(user), {
-    httpOnly: true,
-    sameSite: 'lax',
+  const token = signToken(user);
+  const { exp } = jwt.decode(token); // cookie lives exactly as long as the token (JWT_EXPIRES_IN)
+  res.cookie(SESSION_COOKIE, token, {
+    httpOnly: true, // not readable from JS => an XSS bug cannot steal the session
+    sameSite: 'lax', // not sent on cross-site POSTs => basic CSRF protection
     secure: env.COOKIE_SECURE,
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    maxAge: exp * 1000 - Date.now(),
     path: '/',
   });
 }

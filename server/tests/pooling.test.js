@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
 import { db, resetDb, loginAs } from './helpers.js';
+import { logger } from '../src/lib/logger.js';
 
 beforeEach(resetDb);
 afterAll(() => db.destroy());
@@ -177,6 +178,33 @@ describe('concurrency: Nusrat and Shirin race for the last seat', () => {
     ]);
     expect([a.status, b.status].sort()).toEqual([200, 409]);
     expect(await db('pools').count({ n: '*' }).first()).toEqual({ n: 1 });
+  });
+
+  it('"Add Rafiq" racing "I\'ve arrived" never deadlocks (consistent vehicle -> pool -> ride lock order)', async () => {
+    const warn = vi.spyOn(logger, 'warn');
+    try {
+      for (let round = 0; round < 6; round += 1) {
+        await resetDb();
+        const { jashim, pool } = await bulletCollectingInBanani();
+        const rafiq = await loginAs('rafiq');
+        const [waiting] = await db('rides')
+          .insert({ passenger_id: rafiq.user.id, pickup_zone: 'BANANI', dropoff_zone: 'GULSHAN_1', seats: 1, payment_method: 'CASH', distance_m: 2500 })
+          .returning('id');
+
+        const [accept, arrive] = await Promise.all([
+          jashim.post(`/api/driver/requests/${waiting.id}/accept`),
+          jashim.post(`/api/pools/${pool.id}/arrive`),
+        ]);
+        expect(arrive.status).toBe(200);
+        expect([200, 409]).toContain(accept.status);
+        const seated = await seatedSum(pool.id);
+        expect((await db('pools').where({ id: pool.id }).first()).seats_taken).toBe(seated);
+      }
+      const retries = warn.mock.calls.filter((c) => String(c[1]).includes('transaction conflict'));
+      expect(retries).toHaveLength(0);
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it('a cancel racing an accept leaves a consistent state either way', async () => {

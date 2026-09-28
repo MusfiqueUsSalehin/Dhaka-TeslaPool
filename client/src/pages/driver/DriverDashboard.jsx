@@ -11,9 +11,12 @@ export function DriverDashboard() {
   const zones = useQuery({ queryKey: ['zones'], queryFn: metaApi.zones, staleTime: Infinity });
   const [zone, setZone] = useState('');
 
+  // Follow the Tesla: after a trip Bullet is parked at its last drop-off, so the selector
+  // must move with it (it used to stay on the old zone and offer a pointless "Move here").
+  const serverZone = me.data?.vehicle.currentZone?.code;
   useEffect(() => {
-    if (!zone && me.data?.vehicle.currentZone) setZone(me.data.vehicle.currentZone.code);
-  }, [me.data, zone]);
+    if (serverZone) setZone(serverZone);
+  }, [serverZone]);
 
   const availability = useMutation({
     mutationFn: (online) => (online ? driverApi.online(zone) : driverApi.offline()),
