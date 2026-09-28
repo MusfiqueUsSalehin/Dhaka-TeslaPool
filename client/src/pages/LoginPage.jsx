@@ -29,7 +29,7 @@ export function LoginPage() {
           <label className="field-label" htmlFor="phone">
             Mobile number
           </label>
-          <input id="phone" className="input" inputMode="tel" autoComplete="username" placeholder="01711000002" value={phone} onChange={(e) => setPhone(e.target.value)} required />
+          <input id="phone" className="input" inputMode="tel" autoComplete="username" placeholder="01XXXXXXXXX" value={phone} onChange={(e) => setPhone(e.target.value)} required />
         </div>
         <div>
           <label className="field-label" htmlFor="password">
