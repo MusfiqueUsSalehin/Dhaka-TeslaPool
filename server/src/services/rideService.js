@@ -11,6 +11,7 @@ import { claimSeats, evaluateJoin, lockPool, lockRide, releaseSeats } from './po
 
 async function loadPassengerRide(q, passengerId, rideId) {
   const row = await rideWithPoolQuery(q).where('r.id', rideId).andWhere('r.passenger_id', passengerId).first();
+  // 404 (not 403) for other people's rides: do not confirm that the ID exists.
   if (!row) throw notFound('Ride');
   return row;
 }
@@ -49,6 +50,7 @@ export async function requestRide(passenger, { pickup, dropoff, seats, paymentMe
   const meters = distanceM(pickup, dropoff);
   const estimate = estimateFare({ pickup, dropoff, seats });
 
+  // TeslaPay must be able to cover the worst case (solo fare) before we book.
   if (paymentMethod === 'TESLAPAY' && passenger.wallet_balance_paisa < estimate.solo.totalPaisa) {
     throw conflict('INSUFFICIENT_BALANCE', `TeslaPay balance ${formatTaka(passenger.wallet_balance_paisa)} is below the fare ${formatTaka(estimate.solo.totalPaisa)}. Top up or pay cash.`);
   }
@@ -60,6 +62,7 @@ export async function requestRide(passenger, { pickup, dropoff, seats, paymentMe
 
       // 1) Try to share: the oldest compatible OPEN pool in the same pickup zone wins.
       const joined = await findPoolToJoin(trx, { pickup, dropoff, seats });
+      if (joined) assertRideTransition('REQUESTED', 'MATCHED'); // created and matched in one step
 
       const [ride] = await trx('rides')
         .insert({
@@ -101,6 +104,10 @@ export async function requestRide(passenger, { pickup, dropoff, seats, paymentMe
   return presentRideForPassenger(await loadPassengerRide(db, passenger.id, rideId));
 }
 
+/**
+ * Passenger cancels. Allowed while REQUESTED or MATCHED; seats go back to the pool.
+ * Lock order: pool (if any) then ride, re-checking status after the locks.
+ */
 export async function cancelRide(passenger, rideId, reason = 'Cancelled by passenger') {
   await withTransaction(
     async (trx) => {
@@ -109,6 +116,7 @@ export async function cancelRide(passenger, rideId, reason = 'Cancelled by passe
 
       const pool = snapshot.pool_id ? await lockPool(trx, snapshot.pool_id) : null;
       const ride = await lockRide(trx, { id: rideId });
+      // The ride may have been matched to a pool between our read and the lock.
       if (ride.pool_id !== snapshot.pool_id) throw conflict('RIDE_CHANGED', 'Your ride was just updated, please try again');
 
       assertPassengerCanCancel(ride.status);
@@ -152,6 +160,7 @@ export async function listRides(passenger, { limit = 20, before } = {}) {
   return rows.map(presentRideForPassenger);
 }
 
+/** One ride with its full timeline — "explain exactly what happened". */
 export async function getRide(passenger, rideId) {
   const row = await loadPassengerRide(db, passenger.id, rideId);
   const events = await db('ride_events as e')
