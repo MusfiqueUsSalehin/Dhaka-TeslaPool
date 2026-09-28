@@ -63,7 +63,7 @@ Real routing is out of scope. Geography is a predefined list of Dhaka zones on a
 - See **relevant requests**: waiting passengers within 4 km, nearest first. While filling a
   pool, only requests that pass the matching rule are shown.
 - Accept a request (opens a pool) or add compatible passengers to the current pool.
-- Pool-wide **Arrived** and **Start**, per-passenger **Drop off** in route order, **No-show**.
+- Pool-wide **Arrived** and **Start**, per-passenger **Drop off** (the next stop in route order is the main button; anyone can be dropped early), **No-show**.
 - See passengers, seats (●●○), each passenger's fare and payment method, the drop-off route
   and the trip log. Trip history and TeslaPay earnings.
 
@@ -324,7 +324,7 @@ Other DB commands: `npm run migrate:rollback`, `npm run db:reset` (rollback all 
 cd server && npm test        # needs Postgres; uses TEST_DATABASE_URL or postgres://tesla:tesla@localhost:5432/tesla_pool_test
 ```
 
-**90 tests** (unit tests for pure domain functions, integration tests over HTTP against a real,
+**92 tests** (unit tests for pure domain functions, integration tests over HTTP against a real,
 freshly migrated PostgreSQL). They map to the PRD's list:
 
 | PRD requirement | Where |
@@ -335,6 +335,7 @@ freshly migrated PostgreSQL). They map to the PRD's list:
 | Users can't modify another user's ride | `tests/rides.test.js` → *Rafiq can neither see nor cancel Nusrat's ride* |
 | Cancellation rules hold | `tests/unit/stateMachine.test.js`, `tests/rides.test.js`, `tests/driver.test.js` → *cancellation rules* |
 | Two concurrent requests can't corrupt capacity | `tests/pooling.test.js` → *concurrency: Nusrat and Shirin race for the last seat* (×8), double-accept, cancel-vs-accept |
+| (extra) Another driver can't act on Jashim's pool; driver commands can't deadlock | tests/driver.test.js, tests/pooling.test.js → *never deadlocks* |
 | (extra) Money is exact and charged once | `tests/wallet.test.js` (ledger = balance, unique settlement, cash fallback) |
 
 CI runs the same suite on every push ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
@@ -437,7 +438,7 @@ git log --oneline --graph --all     # see the journey
 ## 17. AI usage
 
 AI was used openly as an engineering tool, as the brief allows. I have reviewed the
-code and can explain, change and debug any part of it.
+code and can explain, change and debug any part of it. Use claude ai with the whole project build and fixed bugs in every steps using it. Also used gemini ai for some git issues. 
 
 - **Tools:** Claude (Anthropic) in an agentic coding session. *(Add any others you used: ChatGPT, Copilot, docs, Stack Overflow.)*
 - **What for:** turning the PRD into an architecture and schema proposal; generating most of the
