@@ -13,7 +13,6 @@ lifecycle. Every step is recorded, so the system can explain what happened after
 | 🌐 **Live deployment** | **TODO: add Render URL** (free tier: first load after idle takes ~30–60 s) · see [docs/deployment.md](docs/deployment.md) |
 | 🔑 **Demo login** | Tap a name on the sign-in screen, or use the phone numbers below with password `tesla1234` |
 
-![The Banani rush-hour story, end to end](docs/screenshots/story.gif)
 
 ---
 
@@ -58,7 +57,7 @@ Real routing is out of scope. Geography is a predefined list of Dhaka zones on a
 - Cancel while the ride is still waiting or matched.
 - Ride history, a per-ride timeline from the audit log, and a TeslaPay wallet (simulated top-ups, ledger).
 
-**Driver (Jashim, Bullet)**
+**Driver (Jashim[Bullet])**
 - Sign in; go online in a zone or go offline (blocked while carrying passengers).
 - See **relevant requests**: waiting passengers within 4 km, nearest first. While filling a
   pool, only requests that pass the matching rule are shown.
@@ -227,30 +226,29 @@ removed, 7 of 8 rounds failed.
 
 ## 9. Project structure
 
-.
-├── client/ React SPA (Vite)
-│ └── src/
-│ ├── api/ fetch wrapper + one function per endpoint
-│ ├── auth/ session context (GET /api/auth/me)
-│ ├── components/ StatusBadge, FareBreakdown, SeatBar, Timeline, ZoneMap, states
-│ └── pages/ passenger/ (request, live ride, history, detail) · driver/ · wallet
-├── server/ Express API
-│ ├── src/
-│ │ ├── config/ env parsing (fails fast)
-│ │ ├── db/ knex, transaction helper with retry, migrate/seed CLI
-│ │ ├── domain/ PURE: zones, fare, matching, state machines
-│ │ ├── services/ commands: rides, driver, pools, payments, wallet, events
-│ │ ├── routes/ HTTP only + zod schemas
-│ │ ├── middleware/ auth, validation, error handler
-│ │ └── lib/ logger, errors, money formatting
-│ ├── migrations/ 3 migrations (schema, constraints, indexes)
-│ ├── seeds/ story cast: Jashim + Bullet, Nusrat, Rafiq, Shirin
-│ └── tests/ unit/ (domain) + integration (HTTP + Postgres)
-├── docs/ architecture, domain rules, deployment, scaling, screenshots
-├── Dockerfile multi-stage: build client → prod deps → runtime (non-root)
-├── docker-compose.yml app + postgres with health checks
-└── render.yaml free-tier deployment blueprint
-
+```.
+├── client/                 # React SPA (Vite)
+│   └── src/
+│       ├── api/            # fetch wrapper + one function per endpoint
+│       ├── auth/           # session context (GET /api/auth/me)
+│       ├── components/     # StatusBadge, FareBreakdown, SeatBar, Timeline, ZoneMap, states
+│       └── pages/          # passenger/ (request, live ride, history, detail) · driver/ · wallet
+├── server/                 # Express API
+│   ├── src/
+│   │   ├── config/         # env parsing (fails fast)
+│   │   ├── db/             # knex, transaction helper with retry, migrate/seed CLI
+│   │   ├── domain/         # PURE: zones, fare, matching, state machines
+│   │   ├── services/       # commands: rides, driver, pools, payments, wallet, events
+│   │   ├── routes/         # HTTP only + zod schemas
+│   │   ├── middleware/     # auth, validation, error handler
+│   │   └── lib/            # logger, errors, money formatting
+│   ├── migrations/         # 3 migrations (schema, constraints, indexes)
+│   ├── seeds/              # story cast: Jashim + Bullet, Nusrat, Rafiq, Shirin
+│   └── tests/              # unit/ (domain) + integration (HTTP + Postgres)
+├── docs/                   # architecture, domain rules, deployment, scaling, screenshots
+├── Dockerfile              # multi-stage: build client → prod deps → runtime (non-root)
+├── docker-compose.yml      # app + postgres with health checks
+└── render.yaml             # free-tier deployment blueprint```
 
 ## 10. Running it
 
@@ -437,13 +435,10 @@ git log --oneline --graph --all     # see the journey
 
 ## 17. AI usage
 
-AI was used openly as an engineering tool, as the brief allows. I have reviewed the
-code and can explain, change and debug any part of it. Use claude ai with the whole project build and fixed bugs in every steps using it. Also used gemini ai for some git issues. 
+AAI was used openly as an engineering tool, as the brief allows. I have reviewed the code and can explain, change and debug any part of it. I used Claude AI for the entire project build and fixing bugs in every step, and Gemini AI for resolving Git issues.
 
-- **Tools:** Claude (Anthropic) in an agentic coding session. *(Add any others you used: ChatGPT, Copilot, docs, Stack Overflow.)*
-- **What for:** turning the PRD into an architecture and schema proposal; generating most of the
-  implementation, tests, Docker/CI setup and this README; running the test suite and a scripted
-  browser walkthrough to find integration bugs; producing screenshots.
+- **Tools:** Claude (Anthropic), Gemini (Google). 
+- **What for:** turning the PRD into an architecture and schema proposal; generating most of the implementation, tests, Docker/CI setup and this README; running the test suite and a scripted browser walkthrough to find integration bugs; producing screenshots; resolving repository and git merge issues.
 - **One accepted suggestion:** model pool membership as `rides.pool_id` instead of a separate
   `pool_members` table, and split the lifecycle into a pool machine and a per-passenger ride machine.
   It removed a second copy of seat counts and made per-passenger drop-off and fare locking natural.
@@ -452,10 +447,9 @@ code and can explain, change and debug any part of it. Use claude ai with the wh
   PRD recommends a relational store for exactly that. It also let us test the real race against a real
   database. *Also changed:* the first matching rule was ratio-only (≤ 1.5× direct distance). A test showed
   it would let a 12 km Uttara trip accept a 3 km opposite-direction detour, so an absolute +2 km cap was added.
-- **How I verified it:** 90 automated tests against real Postgres; a mutation check showing the
+- **How I verified it:** 92 automated tests against real Postgres; a mutation check showing the
   race test fails without the row lock; an end-to-end browser run of the whole story.
 
-> ✍️ *Before submitting: rewrite this section in your own words and add your own examples.*
 
 ## 18. Bonus: "If Oi Tesla goes viral"
 
