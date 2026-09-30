@@ -9,8 +9,8 @@ lifecycle. Every step is recorded, so the system can explain what happened after
 
 | | |
 |---|---|
-| 🎥 **Demo video (≤ 6 min)** | **TODO: add Loom link** |
-| 🌐 **Live deployment** | **TODO: add Render URL** (free tier: first load after idle takes ~30–60 s) · see [docs/deployment.md](docs/deployment.md) |
+| 🎥 **Demo video (≤ 6 min)** | **https://drive.google.com/file/d/1s7BmNqX90WHkIy2uSkl5kUoK6D_3DIYF/view?usp=sharing** |
+| 🌐 **Live deployment** | **https://dhaka-tesla-pool-i4yp.onrender.com/** (free tier: first load after idle takes ~30–60 s) · see [docs/deployment.md](docs/deployment.md) |
 | 🔑 **Demo login** | Tap a name on the sign-in screen, or use the phone numbers below with password `tesla1234` |
 
 
